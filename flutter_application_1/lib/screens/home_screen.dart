@@ -1,84 +1,55 @@
 import 'package:flutter/material.dart';
+import 'package:salomon_bottom_bar/salomon_bottom_bar.dart';
 
-class HomeScreen extends StatefulWidget {
+class GoogleBottomBar extends StatefulWidget {
+  const GoogleBottomBar({Key? key}) : super(key: key);
+
   @override
-  _HomeScreenState createState() => _HomeScreenState();
+  State<GoogleBottomBar> createState() => _GoogleBottomBarState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-  int _currentIndex = 0;
-
-  final List<Widget> _pages = [
-    Center(
-      child: Text(
-        "Search for players nearby based on location or position!",
-        textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 16),
-      ),
-    ),
-    Center(
-      child: Text(
-        "Find teams available in your area!",
-        textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 16),
-      ),
-    ),
-    Center(
-      child: Text(
-        "Create your team and invite players!",
-        textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 16),
-      ),
-    ),
-    Center(
-      child: Text(
-        "View your profile, sport, and position details here.",
-        textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 16),
-      ),
-    ),
-  ];
-
+class _GoogleBottomBarState extends State<GoogleBottomBar> {
+  int _selectedIndex = 0;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Welcome to the Football App!"),
-        centerTitle: true,
+      appBar: AppBar(title: const Text('Home Page')),
+      body: Center(
+        child: _navBarItems[_selectedIndex].title,
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: _pages[_currentIndex],
-          ),
-        ],
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.search),
-            label: 'Find Players',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.group),
-            label: 'Find Teams',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.add_circle_outline),
-            label: 'Create Team',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
-      ),
+      bottomNavigationBar: SalomonBottomBar(
+          currentIndex: _selectedIndex,
+          selectedItemColor: const Color(0xff6200ee),
+          unselectedItemColor: const Color(0xff757575),
+          onTap: (index) {
+            setState(() {
+              _selectedIndex = index;
+            });
+          },
+          items: _navBarItems),
     );
   }
 }
+
+final _navBarItems = [
+  SalomonBottomBarItem(
+    icon: const Icon(Icons.home),
+    title: const Text("Home"),
+    selectedColor: Colors.purple,
+  ),
+  SalomonBottomBarItem(
+    icon: const Icon(Icons.search),
+    title: const Text("Search Players"),
+    selectedColor: Colors.pink,
+  ),
+  SalomonBottomBarItem(
+    icon: const Icon(Icons.search),
+    title: const Text("Search Team"),
+    selectedColor: Colors.orange,
+  ),
+  SalomonBottomBarItem(
+    icon: const Icon(Icons.person),
+    title: const Text("Profile"),
+    selectedColor: Colors.teal,
+  ),
+];
