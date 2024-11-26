@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:salomon_bottom_bar/salomon_bottom_bar.dart';
 
 class GoogleBottomBar extends StatefulWidget {
   const GoogleBottomBar({Key? key}) : super(key: key);
@@ -10,46 +9,55 @@ class GoogleBottomBar extends StatefulWidget {
 
 class _GoogleBottomBarState extends State<GoogleBottomBar> {
   int _selectedIndex = 0;
+
+  final _screens = [
+    Center(child: Text("Home Screen")),
+    Center(child: Text("Search Players")),
+    Center(child: Text("Search Teams")),
+    Center(child: Text("Profile Screen")),
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Home Page')),
-      body: Center(
-        child: _navBarItems[_selectedIndex].title,
+      appBar: AppBar(title: const Text('Football App')),
+      body: _screens[_selectedIndex],
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          // Navigate to Create Team screen
+          Navigator.pushNamed(context, '/create_team');
+        },
+        child: const Icon(Icons.add),
       ),
-      bottomNavigationBar: SalomonBottomBar(
-          currentIndex: _selectedIndex,
-          selectedItemColor: const Color(0xff6200ee),
-          unselectedItemColor: const Color(0xff757575),
-          onTap: (index) {
-            setState(() {
-              _selectedIndex = index;
-            });
-          },
-          items: _navBarItems),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      bottomNavigationBar: BottomAppBar(
+        shape: const CircularNotchedRectangle(),
+        notchMargin: 8.0,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildBottomBarItem(Icons.home, "Home", 0),
+            _buildBottomBarItem(Icons.search, "Search Players", 1),
+            const SizedBox(width: 40), // Spacer for FAB
+            _buildBottomBarItem(Icons.group, "Search Teams", 2),
+            _buildBottomBarItem(Icons.person, "Profile", 3),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomBarItem(IconData icon, String label, int index) {
+    return IconButton(
+      onPressed: () {
+        setState(() {
+          _selectedIndex = index;
+        });
+      },
+      icon: Icon(
+        icon,
+        color: _selectedIndex == index ? Colors.blue : Colors.grey,
+      ),
     );
   }
 }
-
-final _navBarItems = [
-  SalomonBottomBarItem(
-    icon: const Icon(Icons.home),
-    title: const Text("Home"),
-    selectedColor: Colors.purple,
-  ),
-  SalomonBottomBarItem(
-    icon: const Icon(Icons.search),
-    title: const Text("Search Players"),
-    selectedColor: Colors.pink,
-  ),
-  SalomonBottomBarItem(
-    icon: const Icon(Icons.search),
-    title: const Text("Search Team"),
-    selectedColor: Colors.orange,
-  ),
-  SalomonBottomBarItem(
-    icon: const Icon(Icons.person),
-    title: const Text("Profile"),
-    selectedColor: Colors.teal,
-  ),
-];
