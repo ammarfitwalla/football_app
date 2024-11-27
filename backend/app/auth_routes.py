@@ -3,9 +3,10 @@ import requests
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db, User, Location, Position
-from app.schemas import UserSignup, UserLogin, UserResponse, LocationCreate, PositionCreate
+from app.schemas import (UserSignup, UserLogin, UserResponse,
+SetUsernameRequest, SetLocationRequest, SetPositionRequest, LoginResponse)
 from app.firebase import auth as firebase_auth
-from typing import Optional
+from typing import Optional, List
 from datetime import date
 
 auth_router = APIRouter()
@@ -18,7 +19,7 @@ with open(file_path, 'r') as file:
     FIREBASE_API_KEY = file.read().strip()
 
 
-@auth_router.post("/signup", response_model=UserResponse)
+@auth_router.post("/signup", response_model=dict)
 def signup(user: UserSignup, db: Session = Depends(get_db)):
     try:
         print("email=", user.email, 'password=', user.password)
@@ -41,24 +42,14 @@ def signup(user: UserSignup, db: Session = Depends(get_db)):
         print("new user created")
         
         # Return a UserResponse object with optional fields as None
-        return UserResponse(
-            uid=new_user.uid,
-            email=new_user.email,
-            role=new_user.role,
-            username=None,
-            display_name=None,
-            phone_number=None,
-            dob=None,
-            position=None,
-            location=None,
-        )
+        return {'uid': firebase_user.uid}
 
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error during signup: {str(e)}")
 
 
 
-@auth_router.post("/login", response_model=UserResponse)
+@auth_router.post("/login", response_model=LoginResponse)
 def login(user: UserLogin, db: Session = Depends(get_db)):
     try:
         # Use Firebase REST API for email/password authentication
@@ -83,13 +74,18 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
         db_user = db.query(User).filter(User.uid == uid).first()
         if not db_user:
             raise HTTPException(status_code=404, detail="User not found")
-
-        return db_user
+        
+        return {'uid':uid}
     except Exception as e:
         raise HTTPException(status_code=401, detail=f"Authentication failed: {str(e)}")
 
-@auth_router.post("/users/set-username", response_model=UserResponse)
-def set_username(uid: str, display_name: str, username: str, db: Session = Depends(get_db)):
+@auth_router.post("/users/set-username", response_model=dict)
+def set_username(payload: SetUsernameRequest, db: Session = Depends(get_db)):
+    # Extract data from request payload
+    uid = payload.uid
+    display_name = payload.display_name
+    username = payload.username
+
     # Fetch the user by UID
     user = db.query(User).filter(User.uid == uid).first()
     if not user:
@@ -106,118 +102,63 @@ def set_username(uid: str, display_name: str, username: str, db: Session = Depen
     db.commit()
     db.refresh(user)
 
-    return UserResponse(
-        uid=user.uid,
-        email=user.email,
-        role=user.role,
-        username=user.username,
-        phone_number=user.phone_number,
-        dob=user.dob,
-        position=None,  # Optional, will be populated later
-        location=None,  # Optional, will be populated later
-    )
+    return {"message": "Username set successfully"}
 
 
-@auth_router.post("/users/set-location", response_model=UserResponse)
-def set_location(uid: str, location: LocationCreate, db: Session = Depends(get_db)):
-    # Fetch the user
+@auth_router.post("/users/set-location", response_model=dict)
+def set_location(payload: SetLocationRequest, db: Session = Depends(get_db)):
+    # Extract data from request body
+    uid = payload.uid
+    country = payload.country
+    state = payload.state
+    city = payload.city
+    area = payload.area
+
+    existing_location = db.query(Location).filter(
+        Location.country == country,
+        Location.state == state,
+        Location.city == city,
+        Location.area == area,
+    ).first()
+
+    # Fetch the user by UID
     user = db.query(User).filter(User.uid == uid).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-
-    # Check if location exists
-    existing_location = db.query(Location).filter(
-        Location.country == location.country,
-        Location.state == location.state,
-        Location.city == location.city,
-        Location.area == location.area,
-    ).first()
-
-    if existing_location:
-        # Use existing location for the user
-        user.location_id = existing_location.id
-    else:
-        # Create a new location
-        new_location = Location(
-            country=location.country,
-            state=location.state,
-            city=location.city,
-            area=location.area,
-        )
-        db.add(new_location)
-        db.commit()
-        db.refresh(new_location)
-        user.location_id = new_location.id
+    
+    user.location_id = existing_location.id
 
     # Update the user's location_id
     db.commit()
     db.refresh(user)
 
-    # Construct location string for the response
-    user_location = db.query(Location).filter(Location.id == user.location_id).first()
-    if user_location.area:
-        location_str = f"{user_location.area}, {user_location.city}, {user_location.state}, {user_location.country}"
-    else:
-        location_str = f"{user_location.city}, {user_location.state}, {user_location.country}"
-
     # Return UserResponse
-    return UserResponse(
-        uid=user.uid,
-        email=user.email,
-        role=user.role,
-        phone_number=user.phone_number,
-        dob=user.dob,
-        position=None,  # Optional, will be populated later
-        location=location_str,  # Concatenated location string
-    )
+    return {
+        "message": "Location set successfully",
+    }
 
 
 # Endpoint to set position
-@auth_router.post("/users/set-position", response_model=UserResponse)
-def set_position(uid: str, position: PositionCreate, db: Session = Depends(get_db)):
-    # Fetch the user
+@auth_router.post("/users/set-position", response_model=dict)
+def set_position(payload: SetPositionRequest, db: Session = Depends(get_db)):    # Fetch the user
+    uid = payload.uid
+    position = payload.position
+
     user = db.query(User).filter(User.uid == uid).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
     # Check if position exists
-    existing_position = db.query(Position).filter(Position.name == position.name).first()
-
-    if not existing_position:
-        # Create a new position
-        new_position = Position(name=position.name)
-        db.add(new_position)
-        db.commit()
-        db.refresh(new_position)
-        user.position_id = new_position.id
-    else:
-        user.position_id = existing_position.id
+    existing_position = db.query(Position).filter(
+        Position.name == position
+        ).first()
+    user.position_id = existing_position.id
 
     # Update user's position
     db.commit()
     db.refresh(user)
 
-    # Format the location string
-    user_location = None
-    if user.location_id:
-        location = db.query(Location).filter(Location.id == user.location_id).first()
-        if location:
-            if location.area:
-                user_location = f"{location.area}, {location.city}, {location.state}, {location.country}"
-            else:
-                user_location = f"{location.city}, {location.state}, {location.country}"
-
-    # Return UserResponse
-    return UserResponse(
-        uid=user.uid,
-        email=user.email,
-        role=user.role,
-        phone_number=user.phone_number,
-        dob=user.dob,
-        position=position.name,
-        location=user_location,
-    )
-
+    return {'message': 'Position set successfully'}
 
 # Endpoint to set phone number and DOB
 @auth_router.post("/users/set-details", response_model=UserResponse)
@@ -231,3 +172,44 @@ def set_details(uid: str, phone_number: Optional[str] = None, dob: Optional[date
     db.commit()
     db.refresh(user)
     return user
+
+@auth_router.get("/users/check-details")
+def check_details(uid: str, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.uid == uid).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    missing_details = []
+    if not user.username:
+        missing_details.append("username")
+    if not user.location_id:
+        missing_details.append("location")
+    if not user.position_id:
+        missing_details.append("position")
+
+    return {"missing_details": missing_details}
+
+@auth_router.get("/locations/countries", response_model=List[str])
+def get_countries(db: Session = Depends(get_db)):
+    countries = db.query(Location.country).distinct().all()
+    return [country[0] for country in countries]
+
+@auth_router.get("/locations/states", response_model=List[str])
+def get_states(country: str, db: Session = Depends(get_db)):
+    states = db.query(Location.state).filter(Location.country == country).distinct().all()
+    return [state[0] for state in states]
+
+@auth_router.get("/locations/cities", response_model=List[str])
+def get_cities(country: str, state: str, db: Session = Depends(get_db)):
+    cities = db.query(Location.city).filter(Location.country == country, Location.state == state).distinct().all()
+    return [city[0] for city in cities]
+
+@auth_router.get("/locations/areas", response_model=List[str])
+def get_areas(country: str, state: str, city: str, db: Session = Depends(get_db)):
+    areas = db.query(Location.area).filter(Location.country == country, Location.state == state, Location.city == city).distinct().all()
+    return [area[0] for area in areas if area[0]]
+
+@auth_router.get("/positions/get-positions", response_model=List[str])
+def get_positions(db: Session = Depends(get_db)):
+    positions = db.query(Position.name).distinct().all()
+    return [position[0] for position in positions]

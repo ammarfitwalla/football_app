@@ -14,7 +14,7 @@ class _SignupScreenState extends State<SignupScreen> {
   final _passwordController = TextEditingController();
 
   Future<void> _signup() async {
-    final url = Uri.parse('https://your-fastapi-domain/api/signup'); // Replace with your FastAPI endpoint
+    final url = Uri.parse('http://10.0.2.2:8000/signup');
     try {
       final response = await http.post(
         url,
@@ -24,8 +24,15 @@ class _SignupScreenState extends State<SignupScreen> {
         }),
         headers: {'Content-Type': 'application/json'},
       );
-      if (response.statusCode == 201) {
-        Navigator.pushReplacementNamed(context, '/home');
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final String uid = data['uid'];
+        // Navigate to home screen with UID
+        Navigator.pushReplacementNamed(
+        context,
+        '/home',
+        arguments: uid,
+      );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: ${response.body}')),

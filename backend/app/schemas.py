@@ -15,6 +15,10 @@ class UserLogin(BaseModel):
     password: str
 
 
+class LoginResponse(BaseModel):
+    uid: str
+
+
 class UserResponse(BaseModel):
     uid: str
     email: str
@@ -51,8 +55,8 @@ class LocationCreate(BaseModel):
     area: Optional[str] = None
 
 
-class LocationResponse(BaseModel):
-    id: int
+class SetLocationRequest(BaseModel):
+    uid: str
     country: str
     state: str
     city: str
@@ -61,3 +65,14 @@ class LocationResponse(BaseModel):
     class Config:
         orm_mode = True
 
+class SetPositionRequest(BaseModel):
+    uid: str
+    position: str
+
+    class Config:
+        orm_mode = True
+
+class SetUsernameRequest(BaseModel):
+    uid: str
+    display_name: str
+    username: str

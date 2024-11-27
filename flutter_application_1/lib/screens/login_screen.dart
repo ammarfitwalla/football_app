@@ -3,77 +3,76 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
-
   @override
   _LoginScreenState createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  bool _isLoading = false; // To track loading state
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  bool _isLoading = false;
 
   Future<void> _login() async {
-    final url = Uri.parse('http://10.0.2.2:7000/login'); // Replace with your actual API URL
     setState(() {
-      _isLoading = true; // Start loading
+      _isLoading = true;
     });
 
     try {
+      // Example API login call
       final response = await http.post(
-        url,
-        body: jsonEncode({
-          'email': _emailController.text,
-          'password': _passwordController.text,
+        Uri.parse("http://10.0.2.2:8000/login"),
+        headers: {"Content-Type": "application/json"},
+        body: json.encode({
+          "email": _emailController.text,
+          "password": _passwordController.text,
         }),
-        headers: {'Content-Type': 'application/json'},
       );
 
-      setState(() {
-        _isLoading = false; // Stop loading
-      });
-
       if (response.statusCode == 200) {
-        Navigator.pushReplacementNamed(context, '/home');
+        final data = json.decode(response.body);
+        final String uid = data['uid']; // Assume UID is returned on successful login
+
+        // Navigate to home screen with UID
+        Navigator.pushReplacementNamed(context, '/home', arguments: uid);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${response.body}')),
+          SnackBar(content: Text("Login failed: ${response.body}")),
         );
       }
     } catch (e) {
-      setState(() {
-        _isLoading = false; // Stop loading
-      });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
+        SnackBar(content: Text("Error: $e")),
       );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Login")),
+      appBar: AppBar(title: Text("Login")),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
             TextField(
               controller: _emailController,
-              decoration: const InputDecoration(labelText: "Email"),
+              decoration: InputDecoration(labelText: "Email"),
             ),
             TextField(
               controller: _passwordController,
-              decoration: const InputDecoration(labelText: "Password"),
+              decoration: InputDecoration(labelText: "Password"),
               obscureText: true,
             ),
             const SizedBox(height: 20),
             _isLoading
-                ? const CircularProgressIndicator() // Show loading indicator
+                ? CircularProgressIndicator()
                 : ElevatedButton(
                     onPressed: _login,
-                    child: const Text("Login"),
+                    child: Text("Login"),
                   ),
           ],
         ),

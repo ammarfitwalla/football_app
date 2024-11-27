@@ -18,12 +18,20 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      initialRoute: '/home',
+      initialRoute: '/login',
       routes: {
-        '/login': (context) => const LoginScreen(),
+        '/login': (context) => LoginScreen(),
         '/signup': (context) => const SignupScreen(),
-        '/home': (context) => GoogleBottomBar(),
         '/create_team': (context) => CreateTeamScreen(),
+      },
+      onGenerateRoute: (settings) {
+        if (settings.name == '/home') {
+          final String uid = settings.arguments as String;
+          return MaterialPageRoute(
+            builder: (context) => GoogleBottomBar(uid: uid),
+          );
+        }
+        return null;
       },
     );
   }
