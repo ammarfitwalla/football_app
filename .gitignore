@@ -1,1 +1,3 @@
 .vercel
+/app/__pycache__
+/firebase_service_account
