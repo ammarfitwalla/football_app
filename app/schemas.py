@@ -1,7 +1,7 @@
 # Updated version of the schemas.py file with necessary changes.
 
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List
 
 
 # User-related schemas
@@ -76,3 +76,13 @@ class SetUsernameRequest(BaseModel):
     uid: str
     display_name: str
     username: str
+
+
+class SearchQuery(BaseModel):
+    query: Optional[str] = None  # Search text input
+    country: str  # Required: Filter by country
+    state: str  # Required: Filter by state
+    city: str  # Required: Filter by city
+    role: str  # Required: Only search for users with a specific role (e.g., "player")
+    age_filter: Optional[List[int]] = None  # Optional: [start_age, end_age]
+    position_filter: Optional[List[str]] = None  # Optional: Filter by positions

@@ -2,9 +2,11 @@ import os
 import requests
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from app.database import get_db, User, Location, Position
 from app.schemas import (UserSignup, UserLogin, UserResponse,
-SetUsernameRequest, SetLocationRequest, SetPositionRequest, LoginResponse)
+SetUsernameRequest, SetLocationRequest, SetPositionRequest,
+LoginResponse, SearchQuery)
 from app.firebase import auth as firebase_auth
 from typing import Optional, List
 from datetime import date
@@ -213,3 +215,72 @@ def get_areas(country: str, state: str, city: str, db: Session = Depends(get_db)
 def get_positions(db: Session = Depends(get_db)):
     positions = db.query(Position.name).distinct().all()
     return [position[0] for position in positions]
+
+@auth_router.get("/users/get-location")
+def get_location(uid: str, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.uid == uid).first()
+    location_data = db.query(Location).filter(Location.id == user.location_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {
+        "country": location_data.country,
+        "state": location_data.state,
+        "city": location_data.city,
+    }
+
+@auth_router.post("/players/search", response_model=List[UserResponse])
+def search_players(query: SearchQuery, db: Session = Depends(get_db)):
+    filters = []
+
+    if query.query:
+        filters.append(User.username.like(f'%{query.query}%'))
+
+    # Validate and filter by location
+    if query.country or query.state or query.city:
+        location_filters = []
+        if query.country:
+            location_filters.append(Location.country == query.country)
+        if query.state:
+            location_filters.append(Location.state == query.state)
+        if query.city:
+            location_filters.append(Location.city == query.city)
+
+        # Subquery for matching location IDs
+        location_id = db.query(Location).filter(*location_filters).first()
+        filters.append(User.location_id == location_id.id)
+
+    # Filter by age range if provided
+    # if query.age_filter:
+    #     filters.append(User.age.between(query.age_filter[0], query.age_filter[1]))
+
+    # # Validate and filter by position
+    if query.position_filter:
+        filters.append(User.position_id.in_(
+            db.query(Position.id).filter(Position.name.in_(query.position_filter))
+        ))
+    # # Filter by role
+    # filters.append(User.role == "player")
+
+    # Execute the query with applied filters
+    players = db.query(User).filter(*filters).all()
+
+    # Return players with nested location and position
+    results = []
+    for player in players:
+        # location = db.query(Location).filter(Location.id == player.location_id).first()
+        position = db.query(Position).filter(Position.id == player.position_id).first()
+
+        # Build the UserResponse
+        results.append(UserResponse(
+            uid=player.uid,
+            email=player.email,
+            role=player.role,
+            username=player.username,
+            display_name=player.display_name,
+            phone_number=player.phone_number,
+            dob=player.dob,
+            position=position.name if position else None,
+            location=f"{query.city}, {query.state}, {query.country}"
+        ))
+
+    return results
